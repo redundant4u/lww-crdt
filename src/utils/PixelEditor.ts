@@ -13,7 +13,7 @@ export class PixelEditor {
     private _artboard: ArtBoard;
 
     /** The underlying pixel data */
-    private _data = new PixelData("test");
+    private _data: PixelData;
 
     /** The selected color */
     private _color: RGB = [0, 0, 0];
@@ -26,7 +26,9 @@ export class PixelEditor {
     /** Listeners for change events */
     private _listeners: Array<(state: PixelData["state"]) => void> = [];
 
-    constructor(el: HTMLCanvasElement, artboard: ArtBoard) {
+    constructor(el: HTMLCanvasElement, artboard: ArtBoard, name: string) {
+        this._data = new PixelData(name);
+
         this._el = el;
 
         // get the 2D rendering context
@@ -202,5 +204,11 @@ export class PixelEditor {
     receive(state: PixelData["state"]) {
         this._data.merge(state);
         this.draw();
+    }
+
+    /** Clear the canvas. */
+    clear() {
+        this._ctx.clearRect(0, 0, this._el.width, this._el.height);
+        this._data.clear();
     }
 }

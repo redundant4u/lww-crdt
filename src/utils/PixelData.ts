@@ -50,4 +50,8 @@ export class PixelData {
     merge(state: PixelData["state"]) {
         this.data.merge(state);
     }
+
+    clear() {
+        this.data = new LWWMap(this.id, {});
+    }
 }

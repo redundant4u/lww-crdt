@@ -1,41 +1,67 @@
+import { useEffect, useRef } from "react";
+import { Socket, io } from "socket.io-client";
+
 import { RGB } from "@utils/PixelData";
 import { PixelEditor } from "@utils/PixelEditor";
-import { useEffect, useRef } from "react";
 
-const CRDT = () => {
-    const acanvasRef = useRef<HTMLCanvasElement>(null);
-    const bcanvasRef = useRef<HTMLCanvasElement>(null);
+type Props = {
+    isBob: boolean;
+};
+
+const CRDT = ({ isBob }: Props) => {
+    const socket: Socket = io(process.env.SOCKET_URL ?? "http://localhost:3000", {
+        transports: ["websocket"],
+    });
+
+    const canvasRef = useRef<HTMLCanvasElement>(null);
     const paletteRef = useRef<HTMLInputElement>(null);
 
+    const clearCanvas = () => socket.emit("clear");
+
     useEffect(() => {
-        if (!acanvasRef.current || !bcanvasRef.current || !paletteRef.current) {
+        if (!canvasRef.current || !paletteRef.current) {
             return;
         }
 
-        const acanvas = acanvasRef.current;
-        const bcanvas = bcanvasRef.current;
+        const canvas = canvasRef.current;
         const palette = paletteRef.current;
 
+        const name = isBob ? "bob" : "alice";
         const artboardSize = { w: 100, h: 100 };
-        const alice = new PixelEditor(acanvas, artboardSize);
-        const bob = new PixelEditor(bcanvas, artboardSize);
 
-        alice.onchange = (state) => bob.receive(state);
-        bob.onchange = (state) => alice.receive(state);
+        const editor = new PixelEditor(canvas, artboardSize, name);
+
+        editor.onchange = (state) => {
+            socket.emit(name, state);
+        };
 
         palette.oninput = () => {
             const hex = palette.value.substring(1).match(/[\da-f]{2}/g) || [];
             const rgb = hex.map((byte) => parseInt(byte, 16));
 
             if (rgb.length === 3) {
-                alice.color = bob.color = rgb as RGB;
+                editor.color = rgb as RGB;
             }
         };
 
+        socket.once("init", (state) => {
+            editor.receive(state);
+        });
+
+        socket.on(name, (state) => {
+            editor.receive(state);
+        });
+
+        socket.on("clear", () => {
+            editor.clear();
+        });
+
         return () => {
-            alice.onchange = () => null;
-            bob.onchange = () => null;
+            editor.onchange = () => null;
             palette.oninput = null;
+
+            socket.disconnect();
+            socket.close();
         };
     }, []);
 
@@ -43,10 +69,28 @@ const CRDT = () => {
         <>
             <div className="wrapper">
                 <div className="canvases">
-                    <canvas ref={acanvasRef} className="canvas" id="alice"></canvas>
-                    <canvas ref={bcanvasRef} className="canvas" id="bob"></canvas>
+                    <canvas ref={canvasRef} className="canvas"></canvas>
                 </div>
-                <input ref={paletteRef} className="color" type="color" defaultValue="#000000" />
+                <div>
+                    <input ref={paletteRef} className="color" type="color" defaultValue="#000000" />
+                    <svg
+                        className="with-icon_icon__MHUeb"
+                        data-testid="geist-icon"
+                        fill="none"
+                        height="24"
+                        shapeRendering={"geometricPrecision"}
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="1.5"
+                        viewBox="0 0 24 24"
+                        width="24"
+                        onClick={clearCanvas}
+                    >
+                        <path d="M3 6h18" />
+                        <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                    </svg>
+                </div>
             </div>
             <style jsx>{`
                 .wrapper {
