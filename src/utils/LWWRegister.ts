@@ -21,10 +21,14 @@ export class LWWRegister<T> {
         const [localPeer, localTimestamp] = this.state;
 
         // if the local timestamp is greater than the remote timestamp, discard the incoming value
-        if (localTimestamp > remoteTimestamp) return;
+        if (localTimestamp > remoteTimestamp) {
+            return;
+        }
 
         // if the timestamps are the same but the local peer ID is greater than the remote peer ID, discard the incoming value
-        if (localTimestamp === remoteTimestamp && localPeer > remotePeer) return;
+        if (localTimestamp === remoteTimestamp && localPeer > remotePeer) {
+            return;
+        }
 
         // otherwise, overwrite the local state with the remote state
         this.state = state;
