@@ -9,7 +9,7 @@ type Props = {
 };
 
 const CRDT = ({ isBob }: Props) => {
-    const socket: Socket = io(process.env.SOCKET_URL ?? "http://localhost:3000", {
+    const socket: Socket = io("http://localhost:3000", {
         transports: ["websocket"],
     });
 
@@ -31,10 +31,7 @@ const CRDT = ({ isBob }: Props) => {
 
         const editor = new PixelEditor(canvas, artboardSize, name);
 
-        editor.onchange = (state) => {
-            socket.emit(name, state);
-        };
-
+        editor.onchange = (state) => socket.emit(name, state);
         palette.oninput = () => {
             const hex = palette.value.substring(1).match(/[\da-f]{2}/g) || [];
             const rgb = hex.map((byte) => parseInt(byte, 16));
@@ -44,17 +41,9 @@ const CRDT = ({ isBob }: Props) => {
             }
         };
 
-        socket.once("init", (state) => {
-            editor.receive(state);
-        });
-
-        socket.on(name, (state) => {
-            editor.receive(state);
-        });
-
-        socket.on("clear", () => {
-            editor.clear();
-        });
+        socket.once("init", (state) => editor.receive(state));
+        socket.on(name, (state) => editor.receive(state));
+        socket.on("clear", () => editor.clear());
 
         return () => {
             editor.onchange = () => null;
